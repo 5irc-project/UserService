@@ -12,6 +12,14 @@ namespace UserService.Models
 
         public DbSet<User> Users { get; set; } 
 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.HasDefaultSchema("public");
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<User>().HasKey(u => u.UserId).HasName("pk_uti");
+            modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique().HasDatabaseName("uq_utl_mail");
+        }
 
     }
 }

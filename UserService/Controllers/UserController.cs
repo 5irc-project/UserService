@@ -1,83 +1,163 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using UserService.Models.EntityFramework;
+using UserService.Models.Repository;
 
 namespace UserService.Controllers
 {
-    public class UserController : Controller
+
+    [Route("api/users")]
+    [ApiController]
+    public class UserController : ControllerBase
     {
-        // GET: UserController
-        public ActionResult Index()
+
+        private readonly IDataRepository<User> dataRepository; 
+
+        public UserController(IDataRepository<User> dataRepository)
         {
-            return View();
+            this.dataRepository = dataRepository;
         }
 
-        // GET: UserController/Details/5
-        public ActionResult Details(int id)
+        /// <summary>
+        /// Get all users
+        /// </summary>
+        /// <returns>Http response with all users</returns>
+        /// <response code="200">Successfully return all users</response>
+        // GET: api/users
+        [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<User>), 200)]
+
+        public async Task<ActionResult<IEnumerable<User>>> GetAllUsers()
         {
-            return View();
+            return dataRepository.GetAll();
         }
 
-        // GET: UserController/Create
-        public ActionResult Create()
+        /// <summary>
+        /// Get user by ID
+        /// </summary>
+        /// <returns>The related user</returns>
+        /// <response code="200">Successfully return the user</response>
+        /// <response code="404">User not found</response>
+        // GET: api/users/5
+        [Route("[action]/{id}")]
+        [HttpGet]
+        [ProducesResponseType(typeof(User), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<User>> GetUserById(int id)
         {
-            return View();
+            //var utilisateur = await _context.Utilisateurs.Include(u => u.NotesUtilisateur).SingleOrDefaultAsync(u => u.UtilisateurId == id);
+            var user = dataRepository.GetById(id);
+
+            if (user.Value == null)
+            {
+                return NotFound("User not found");
+            }
+
+            return user.Value;
         }
 
-        // POST: UserController/Create
+        /// <summary>
+        /// Get user by email
+        /// </summary>
+        /// <returns>The related user</returns>
+        /// <response code="200">Successfully return the user</response>
+        /// <response code="404">User not found</response>
+        // GET: api/users/toto@toto.fr
+        [Route("[action]/{email}")]
+        [HttpGet]
+        [ProducesResponseType(typeof(User), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<User>> GetUserByEmail(string email)
+        {
+            //var utilisateur = await _context.Utilisateurs.Include(u => u.NotesUtilisateur).SingleOrDefaultAsync(u => u.Mail == email);
+            var user = dataRepository.GetByString(email);
+
+            if (user.Value == null)
+            {
+                return NotFound("User not found");
+            }
+
+            return user.Value;
+        }
+
+        /// <summary>
+        /// Create a new user
+        /// </summary>
+        /// <param name="utilisateur">User to create</param>
+        /// <returns>Http response</returns>
+        /// <response code="201">When the user is successfully created</response>
+        /// <response code="400">Invalid user data</response>
+        // POST: api/Utilisateurs
+        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
+        [ProducesResponseType(typeof(User), 201)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<User>> PostUser(User user)
         {
-            try
+            if (!ModelState.IsValid)
             {
-                return RedirectToAction(nameof(Index));
+                return BadRequest(ModelState);
             }
-            catch
-            {
-                return View();
-            }
+
+            await dataRepository.AddAsync(user);
+
+            return CreatedAtAction("GetUserById", new { id = user.UserId }, user);
         }
 
-        // GET: UserController/Edit/5
-        public ActionResult Edit(int id)
+        /// <summary>
+        /// Update an user
+        /// </summary>
+        /// <returns>The related user</returns>
+        /// <response code="204">Successfully updated the user</response>
+        /// <response code="400">Invalid user data</response>
+        /// <response code="404">User not found</response>
+        // PUT: api/users/5
+        [HttpPut("{id}")]
+        [ProducesResponseType(typeof(User), 204)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(404)]
+        public async Task<IActionResult> PutUtilisateur(int id, User user)
         {
-            return View();
+            if (id != user.UserId)
+            {
+                return BadRequest("Invalid user data");
+            }
+
+            var userToUpdate = dataRepository.GetById(id);
+
+            if (userToUpdate.Value == null)
+            {
+                return NotFound("User not found");
+
+            }
+
+            await dataRepository.UpdateAsync(userToUpdate.Value, user);
+
+            return NoContent();
         }
 
-        // POST: UserController/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
+        /// <summary>
+        /// Delete an user
+        /// </summary>
+        /// <returns>The related user</returns>
+        /// <response code="204">Successfully deleted the user</response>
+        /// <response code="404">User not found</response>
+        // DELETE: api/users/5
+        [ProducesResponseType(typeof(User), 204)]
+        [ProducesResponseType(404)]
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<User>> DeleteUser(int id)
         {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
-        }
 
-        // GET: UserController/Delete/5
-        public ActionResult Delete(int id)
-        {
-            return View();
-        }
+            var user = dataRepository.GetById(id);
 
-        // POST: UserController/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
+            if (user.Value == null)
+            { 
+                return NotFound("User not found");
             }
-            catch
-            {
-                return View();
-            }
+
+            await dataRepository.DeleteAsync(user.Value);
+
+            return user.Value;
         }
     }
 }
