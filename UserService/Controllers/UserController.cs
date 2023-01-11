@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using UserService.Exceptions;
 using UserService.Models.EntityFramework;
 using UserService.Models.Repository;
 
@@ -28,7 +29,7 @@ namespace UserService.Controllers
 
         public async Task<ActionResult<IEnumerable<User>>> GetAllUsers()
         {
-            return dataRepository.GetAll();
+            return await dataRepository.GetAllAsync();
         }
 
         /// <summary>
@@ -44,15 +45,16 @@ namespace UserService.Controllers
         [ProducesResponseType(404)]
         public async Task<ActionResult<User>> GetUserById(int id)
         {
-            //var utilisateur = await _context.Utilisateurs.Include(u => u.NotesUtilisateur).SingleOrDefaultAsync(u => u.UtilisateurId == id);
-            var user = dataRepository.GetById(id);
-
-            if (user.Value == null)
+            try
+            {
+                var user = await dataRepository.GetByIdAsync(id);
+                return user.Value;
+            }
+            catch (UserNotFoundException)
             {
                 return NotFound("User not found");
             }
 
-            return user.Value;
         }
 
         /// <summary>
@@ -68,15 +70,15 @@ namespace UserService.Controllers
         [ProducesResponseType(404)]
         public async Task<ActionResult<User>> GetUserByEmail(string email)
         {
-            //var utilisateur = await _context.Utilisateurs.Include(u => u.NotesUtilisateur).SingleOrDefaultAsync(u => u.Mail == email);
-            var user = dataRepository.GetByString(email);
-
-            if (user.Value == null)
+            try
+            {
+                var user = await dataRepository.GetByStringAsync(email);
+                return user.Value;
+            }
+            catch (UserNotFoundException)
             {
                 return NotFound("User not found");
             }
-
-            return user.Value;
         }
 
         /// <summary>
@@ -86,21 +88,23 @@ namespace UserService.Controllers
         /// <returns>Http response</returns>
         /// <response code="201">When the user is successfully created</response>
         /// <response code="400">Invalid user data</response>
-        // POST: api/Utilisateurs
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        /// <response code="500">Failed to add the user to the database</response>
+        // POST: api/users
         [HttpPost]
         [ProducesResponseType(typeof(User), 201)]
-        [ProducesResponseType(400)]
+        [ProducesResponseType(500)]
         public async Task<ActionResult<User>> PostUser(User user)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
+                await dataRepository.AddAsync(user);
+                return CreatedAtAction("GetUserById", new { id = user.UserId }, user);
+            }
+            catch (UserDBCreationException e)
+            {
+                return StatusCode(500, "Failed to add the user: is the e-mail unique?");
             }
 
-            await dataRepository.AddAsync(user);
-
-            return CreatedAtAction("GetUserById", new { id = user.UserId }, user);
         }
 
         /// <summary>
@@ -122,17 +126,21 @@ namespace UserService.Controllers
                 return BadRequest("Invalid user data");
             }
 
-            var userToUpdate = dataRepository.GetById(id);
-
-            if (userToUpdate.Value == null)
+            try
             {
-                return NotFound("User not found");
+                var userToUpdate = await dataRepository.GetByIdAsync(id);
+                await dataRepository.UpdateAsync(userToUpdate.Value, user);
+                return NoContent();
 
             }
-
-            await dataRepository.UpdateAsync(userToUpdate.Value, user);
-
-            return NoContent();
+            catch (UserNotFoundException)
+            {
+                return NotFound("User not found");
+            }
+            catch (UserDBUpdateException)
+            {
+                return BadRequest("Could not update database");
+            }
         }
 
         /// <summary>
@@ -147,17 +155,20 @@ namespace UserService.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<User>> DeleteUser(int id)
         {
-
-            var user = dataRepository.GetById(id);
-
-            if (user.Value == null)
-            { 
+            try
+            {
+                var user = await dataRepository.GetByIdAsync(id);
+                await dataRepository.DeleteAsync(user.Value);
+                return user.Value;
+            }
+            catch (UserNotFoundException)
+            {
                 return NotFound("User not found");
             }
-
-            await dataRepository.DeleteAsync(user.Value);
-
-            return user.Value;
+            catch (UserDBDeletionException)
+            {
+                return StatusCode(500, "Failed to delete the user");
+            }
         }
     }
 }

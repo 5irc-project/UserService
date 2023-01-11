@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using UserService.Exceptions;
 using UserService.Models.EntityFramework;
 using UserService.Models.Repository;
 
@@ -15,41 +16,72 @@ namespace UserService.Models.DataManager
             this.userDBContext = userDBContext;
         }
 
-        public ActionResult<IEnumerable<User>> GetAll()
+        public async Task<ActionResult<IEnumerable<User>>> GetAllAsync()
         {
-            return userDBContext.Users.ToList();
+            return await userDBContext.Users.ToListAsync();
         }
 
-        public ActionResult<User> GetById(int id)
+        public async Task<ActionResult<User>> GetByIdAsync(int id)
         {
-            return userDBContext.Users.FirstOrDefault(u => u.UserId == id);
+            var user = await userDBContext.Users.FirstOrDefaultAsync(u => u.UserId == id);
+            if (user == null)
+            {
+                throw new UserNotFoundException();
+            }
+            return user;
         }
 
-        public ActionResult<User> GetByString(string email)
+        public async Task<ActionResult<User>> GetByStringAsync(string email)
         {
-            return userDBContext.Users.FirstOrDefault(u => u.Email.ToUpper() == email.ToUpper());
+            var user = await userDBContext.Users.FirstOrDefaultAsync(u => u.Email.ToUpper() == email.ToUpper());
+            if (user == null)
+            {
+                throw new UserNotFoundException();
+            }
+            return user;
         }
 
         public async Task AddAsync(User entity)
         {
-            await userDBContext.Users.AddAsync(entity);
-            await userDBContext.SaveChangesAsync();
+            try
+            {
+                await userDBContext.Users.AddAsync(entity);
+                await userDBContext.SaveChangesAsync();
+            } catch (Exception) {
+                throw new UserDBCreationException();
+            }
+
         }
 
         public async Task UpdateAsync(User user, User entity)
         {
-            userDBContext.Entry(user).State = EntityState.Modified;
-            user.UserId = entity.UserId;
-            user.Nom = entity.Nom;
-            user.ProfilePictureUrl = entity.ProfilePictureUrl;
-            user.Email = entity.Email;
-            await userDBContext.SaveChangesAsync();
+            try
+            {
+                userDBContext.Entry(user).State = EntityState.Modified;
+                user.UserId = entity.UserId;
+                user.Nom = entity.Nom;
+                user.ProfilePictureUrl = entity.ProfilePictureUrl;
+                user.Email = entity.Email;
+                await userDBContext.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                throw new UserDBUpdateException();
+            }
         }
 
         public async Task DeleteAsync(User user)
         {
-            userDBContext.Users.Remove(user);
-            await userDBContext.SaveChangesAsync();
+            try
+            {
+                userDBContext.Users.Remove(user);
+                await userDBContext.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                throw new UserDBDeletionException();
+            }
+
         }
 
     }
