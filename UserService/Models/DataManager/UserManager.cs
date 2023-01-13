@@ -24,6 +24,7 @@ namespace UserService.Models.DataManager
         public async Task<ActionResult<User>> GetByIdAsync(int id)
         {
             var user = await userDBContext.Users.FirstOrDefaultAsync(u => u.UserId == id);
+            user = null;
             if (user == null)
             {
                 throw new UserNotFoundException();
