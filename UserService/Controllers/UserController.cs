@@ -119,13 +119,12 @@ namespace UserService.Controllers
         [ProducesResponseType(typeof(User), 204)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public async Task<IActionResult> PutUtilisateur(int id, User user)
+        public async Task<IActionResult> PutUser(int id, User user)
         {
             if (id != user.UserId)
             {
                 return BadRequest("Invalid user data");
             }
-
             try
             {
                 var userToUpdate = await dataRepository.GetByIdAsync(id);
@@ -150,7 +149,7 @@ namespace UserService.Controllers
         /// <response code="204">Successfully deleted the user</response>
         /// <response code="404">User not found</response>
         // DELETE: api/users/5
-        [ProducesResponseType(typeof(User), 204)]
+        [ProducesResponseType(204)]
         [ProducesResponseType(404)]
         [HttpDelete("{id}")]
         public async Task<ActionResult<User>> DeleteUser(int id)
@@ -159,7 +158,7 @@ namespace UserService.Controllers
             {
                 var user = await dataRepository.GetByIdAsync(id);
                 await dataRepository.DeleteAsync(user.Value);
-                return user.Value;
+                return NoContent();
             }
             catch (UserNotFoundException)
             {

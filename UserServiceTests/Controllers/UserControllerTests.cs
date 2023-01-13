@@ -15,6 +15,7 @@ using System.Text.RegularExpressions;
 using System.Net;
 using Moq;
 using UserService.Exceptions;
+using Microsoft.AspNetCore.Http;
 
 namespace UserService.Controllers.Tests
 {
@@ -43,11 +44,22 @@ namespace UserService.Controllers.Tests
             //CollectionAssert.AreEqual(lUsers, _userRepository.GetAllAsync().Result.Value.ToList());
         }
 
+        [TestMethod()]
+        public void GetUserByIdTest_ReturnsOk()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var demoUser = GetDemoUser();
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(1)).ReturnsAsync(demoUser);
+
+            var controller = new UserController(_userRepository);
+
+            var result = controller.GetUserById(1);
+            Assert.AreEqual(result.Result.Value, demoUser);
+        }
 
         [TestMethod()]
         public void GetUserByIdTest_ReturnsNotOk()
         {
-            // Arrange
             var _userRepository = Mock.Of<IDataRepository<User>>();
             Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(4)).ThrowsAsync(new UserNotFoundException());
 
@@ -57,80 +69,141 @@ namespace UserService.Controllers.Tests
             Assert.IsInstanceOfType(result.Result.Result, typeof(NotFoundObjectResult));
         }
 
-        //[TestMethod()]
-        //public void GetUserByIdTest_ReturnsOk()
-        //{
-        //    _context.Users.Add(GetDemoUser());
 
-        //    User userTest = _context.Users.Single(u => u.UserId == 3);
-        //    User? userApi = _controller.GetUserById(3).Result.Value;
 
-        //    Assert.IsNotNull(userApi);
-        //    Assert.AreEqual(userTest, userApi);
-        //}
+        [TestMethod()]
+        public void GetUserByEmailTest_ReturnsOk()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var demoUser = GetDemoUser();
+            Mock.Get(_userRepository).Setup(m => m.GetByStringAsync("demo_email@gmail.com")).ReturnsAsync(demoUser);
 
-        //[TestMethod()]
-        //public void GetUserByEmailTest_ReturnsNotOk()
-        //{
-        //    var result = _controller.GetUserByEmail("test@test.com").Result;
+            var controller = new UserController(_userRepository);
 
-        //    Assert.IsInstanceOfType(result.Result, typeof(NotFoundObjectResult));
-        //}
+            var result = controller.GetUserByEmail("demo_email@gmail.com");
+            Assert.AreEqual(result.Result.Value, demoUser);
+        }
 
-        //[TestMethod()]
-        //public void GetUserByEmailTest_ReturnsOk()
-        //{
-        //    _context.Users.Add(GetDemoUser());
+        [TestMethod()]
+        public void GetUserByEmailTest_ReturnsNotOk()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            Mock.Get(_userRepository).Setup(m => m.GetByStringAsync("inexistant_email@gmail.com")).ThrowsAsync(new UserNotFoundException());
 
-        //    User userTest = _context.Users.Single(u => u.Email == "toto@gmail.com");
-        //    User? userApi = _controller.GetUserByEmail("toto@gmail.com").Result.Value;
+            var controller = new UserController(_userRepository);
 
-        //    Assert.IsNotNull(userApi);
-        //    Assert.AreEqual(userTest, userApi);
-        //}
+            var result = controller.GetUserByEmail("inexistant_email@gmail.com");
+            Assert.IsInstanceOfType(result.Result.Result, typeof(NotFoundObjectResult));
+        }
 
-        //[TestMethod()]
-        //public void PostUser_ModelValidated_CreationOk()
-        //{
-        //    // Arrange
-        //    Random rnd = new Random();
-        //    int digit = rnd.Next(1, 1000000000);
-        //    // Le mail doit être unique donc 2 possibilités :
-        //    // 1. on s'arrange pour que le mail soit unique en concaténant un random ou un timestamp
-        //    // 2. On supprime le user après l'avoir créé. Dans ce cas, nous avons besoin d'appeler la méthode DELETE du WS => la décommenter
-        //    User userToTest = new User()
-        //    {
-        //        Nom = "MACHIN",
-        //        Email = "machin" + digit + "@gmail.com",
-        //        ProfilePictureUrl = "toto_picture.png"
-        //    };
-        //    // Act
-        //    var result = _controller.PostUser(userToTest).Result; // Result pour appeler la méthode async de manière synchrone, afin d'obtenir le résultat
-        //    var result2 = _controller.GetUserByEmail(userToTest.Email);
-        //    var actionResult = result2.Result as ActionResult<User>;
-        //    // Assert
-        //    Assert.IsInstanceOfType(actionResult.Value, typeof(User), "Not a user");
-        //    User? userRetrieved = _context.Users.Where(u => u.Email.ToUpper() == userToTest.Email.ToUpper()).FirstOrDefault();
-        //    // On ne connait pas l'ID de l’utilisateur envoyé car numéro automatique.
-        //    // Du coup, on récupère l'ID de celui récupéré et on compare ensuite les 2 users
-        //    userToTest.UserId = userRetrieved.UserId;
-        //    Assert.AreEqual(userRetrieved, userToTest, "Users are not the same");
-        //}
+        [TestMethod()]
+        public void PostUser_CreationOk()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var controller = new UserController(_userRepository);
+            var demoUser = GetDemoUser();
 
-        //[TestMethod()]
-        //public void PostUser_ModelNotValidated()
-        //{
-        //    User userToTestWithoutMail = new User()
-        //    {
-        //        Nom = "MACHIN",
-        //        ProfilePictureUrl = "toto_picture.png"
-        //    };
-        //    Assert.AreEqual((int)HttpStatusCode.InternalServerError, _controller.PostUser(userToTestWithoutMail).Result);
-        //}
+            var actionResult = controller.PostUser(demoUser).Result.Result;
+            Assert.IsInstanceOfType(actionResult, typeof(CreatedAtActionResult));
+        }
 
-        //User GetDemoUser()
-        //{
-        //    return new User() { UserId = 3, Nom = "Demo name", Email = "toto@gmail.com", ProfilePictureUrl = "toto_picture.png" };
-        //}
+        [TestMethod()]
+        public void PostUser_CreationNotOk()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var controller = new UserController(_userRepository);
+            var demoUser = GetDemoUser();
+            Mock.Get(_userRepository).Setup(m => m.AddAsync(demoUser)).ThrowsAsync(new UserDBCreationException());
+
+            var actionResult = (ObjectResult) controller.PostUser(demoUser).Result.Result;
+            Assert.AreEqual(actionResult.StatusCode, (int)HttpStatusCode.InternalServerError);
+        }
+
+        // Can't test model not ok as it's managed by annotations: not our code therefore not our responsibility
+
+
+        [TestMethod()]
+        public void PutUser_ReturnsOk()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var controller = new UserController(_userRepository);
+            var demoUser = GetDemoUser();
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(3)).ReturnsAsync(demoUser);
+            //Mock.Get(_userRepository).Setup(m => m.UpdateAsync(demoUser, demoUser)).ThrowsAsync(new UserDBUpdateException());
+
+            var actionResult = controller.PutUser(3, demoUser).Result;
+            Assert.IsInstanceOfType(actionResult, typeof(NoContentResult));
+        }
+
+        [TestMethod()]
+        public void PutUser_ReturnsBadRequest()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var controller = new UserController(_userRepository);
+            var demoUser = GetDemoUser();
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(3)).ReturnsAsync(demoUser);
+            Mock.Get(_userRepository).Setup(m => m.UpdateAsync(demoUser, demoUser)).ThrowsAsync(new UserDBUpdateException());
+
+            var actionResult = (ObjectResult)controller.PutUser(3, demoUser).Result;
+            //Assert.AreEqual(actionResult.StatusCode, (int)HttpStatusCode.BadR);
+            Assert.IsInstanceOfType(actionResult, typeof(BadRequestObjectResult));
+        }
+
+        [TestMethod()]
+        public void PutUser_ReturnsNotFound()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var controller = new UserController(_userRepository);
+            var demoUser = GetDemoUser();
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(3)).ThrowsAsync(new UserNotFoundException());
+
+            var actionResult = (ObjectResult)controller.PutUser(3, demoUser).Result;
+            Assert.IsInstanceOfType(actionResult, typeof(NotFoundObjectResult));
+        }
+
+        [TestMethod()]
+        public void DeleteUser_ReturnsOk()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var controller = new UserController(_userRepository);
+            var demoUser = GetDemoUser();
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(1)).ReturnsAsync(demoUser);
+            //Mock.Get(_userRepository).Setup(m => m.DeleteAsync(demoUser));
+
+            var actionResult = controller.DeleteUser(1).Result.Result;
+            Assert.IsInstanceOfType(actionResult, typeof(NoContentResult));
+        }
+
+        [TestMethod()]
+        public void DeleteUser_ReturnsNotFound()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var controller = new UserController(_userRepository);
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(1)).ThrowsAsync(new UserNotFoundException());
+            //Mock.Get(_userRepository).Setup(m => m.DeleteAsync(demoUser));
+
+            var actionResult = controller.DeleteUser(1).Result.Result;
+            Assert.IsInstanceOfType(actionResult, typeof(NotFoundObjectResult));
+        }
+
+        [TestMethod()]
+        public void DeleteUser_ReturnsNotOk()
+        {
+            var _userRepository = Mock.Of<IDataRepository<User>>();
+            var controller = new UserController(_userRepository);
+            var demoUser = GetDemoUser();
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(1)).ReturnsAsync(demoUser);
+            Mock.Get(_userRepository).Setup(m => m.DeleteAsync(demoUser)).ThrowsAsync(new UserDBDeletionException());
+
+            var actionResult = (ObjectResult) controller.DeleteUser(1).Result.Result;
+            //Assert.IsInstanceOfType(actionResult, );
+            Assert.AreEqual(actionResult.StatusCode, (int) HttpStatusCode.InternalServerError);
+        }
+
+
+        User GetDemoUser()
+        {
+            return new User() { UserId = 3, Nom = "Demo name", Email = "demo_email@gmail.com", ProfilePictureUrl = "demo_picture.png" };
+        }
     }
 }
