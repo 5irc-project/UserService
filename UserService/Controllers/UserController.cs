@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using UserService.DTO;
 using UserService.Exceptions;
+using UserService.Mappers;
 using UserService.Models.EntityFramework;
 using UserService.Models.Repository;
 
@@ -64,20 +66,22 @@ namespace UserService.Controllers
         /// <response code="200">Successfully return the user</response>
         /// <response code="404">User not found</response>
         // GET: api/users/toto@toto.fr
-        [Route("[action]/{email}")]
-        [HttpGet]
+        [Route("[action]")]
+        [HttpPost]
         [ProducesResponseType(typeof(User), 200)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<User>> GetUserByEmail(string email)
+        public async Task<ActionResult<UserDTO>> CreateOrGetUser(UserDTO userDto)
         {
             try
             {
-                var user = await dataRepository.GetByStringAsync(email);
-                return user.Value;
+                var user = await dataRepository.GetByStringAsync(userDto.Email);
+                return UserMapper.ModelToDto(user.Value);
             }
             catch (UserNotFoundException)
             {
-                return NotFound("User not found");
+                User user = UserMapper.DtoToModel(userDto);
+                await dataRepository.AddAsync(user);
+                return CreatedAtAction("GetUserById", new { id = user.UserId }, user);
             }
         }
 
