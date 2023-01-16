@@ -24,7 +24,6 @@ namespace UserService.Models.DataManager
         public async Task<ActionResult<User>> GetByIdAsync(int id)
         {
             var user = await userDBContext.Users.FirstOrDefaultAsync(u => u.UserId == id);
-            user = null;
             if (user == null)
             {
                 throw new UserNotFoundException();
@@ -54,7 +53,7 @@ namespace UserService.Models.DataManager
 
         }
 
-        public async Task UpdateAsync(User user, User entity)
+        public async Task<ActionResult<User>> UpdateAsync(User user, User entity)
         {
             try
             {
@@ -64,6 +63,7 @@ namespace UserService.Models.DataManager
                 user.ProfilePictureUrl = entity.ProfilePictureUrl;
                 user.Email = entity.Email;
                 await userDBContext.SaveChangesAsync();
+                return user;
             }
             catch (Exception)
             {

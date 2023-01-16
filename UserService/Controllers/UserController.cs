@@ -132,9 +132,8 @@ namespace UserService.Controllers
             try
             {
                 var userToUpdate = await dataRepository.GetByIdAsync(id);
-                await dataRepository.UpdateAsync(userToUpdate.Value, user);
-                return NoContent();
-
+                var userToReturn = await dataRepository.UpdateAsync(userToUpdate.Value, user);
+                return new OkObjectResult(userToReturn.Value);
             }
             catch (UserNotFoundException)
             {

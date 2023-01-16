@@ -9,7 +9,7 @@ namespace UserService.Models.Repository
         Task<ActionResult<TEntity>> GetByIdAsync(int id);
         Task<ActionResult<TEntity>> GetByStringAsync(string str);
         Task AddAsync(TEntity entity);
-        Task UpdateAsync(TEntity entityToUpdate, TEntity entity);
+        Task<ActionResult<User>> UpdateAsync(TEntity entityToUpdate, TEntity entity);
         Task DeleteAsync(TEntity entity);
     }
 }
