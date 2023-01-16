@@ -21,7 +21,7 @@ namespace UserService.Models.EntityFramework
         [Column("usr_email")]
         public string? Email { get; set; }
 
-        [MaxLength(50)]
+        [MaxLength(500)]
         [Column("usr_profile_picture_url")]
         public string? ProfilePictureUrl { get; set; }
     }

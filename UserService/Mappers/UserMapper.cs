@@ -19,7 +19,6 @@ namespace UserService.Mappers
         public static User DtoToModel(UserDTO dto)
         {
             User user = new User();
-            user.UserId = dto.UserId;
             user.Email = dto.Email;
             user.Nom = dto.Nom;
             user.ProfilePictureUrl = dto.ProfilePictureUrl;
