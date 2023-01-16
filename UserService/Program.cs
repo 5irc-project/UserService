@@ -18,6 +18,26 @@ builder.Services.AddDbContext<UserDBContext>(options => options.UseNpgsql(builde
 
 builder.Services.AddScoped<IDataRepository<User>, UserManager>();
 
+static WebApplication MigrateDatabase(WebApplication app)
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var db = services.GetRequiredService<UserDBContext>();
+            db.Database.Migrate();
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while migrating the database.");
+        }
+    }
+    return app;
+
+}
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -32,5 +52,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app = MigrateDatabase(app);
 
 app.Run();
