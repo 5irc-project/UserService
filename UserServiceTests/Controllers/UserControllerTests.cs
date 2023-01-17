@@ -137,7 +137,7 @@ namespace UserService.Controllers.Tests
                 new Claim("UserId", "3")
             };
 
-            var identity = new ClaimsIdentity(claims, "TestAuthType");
+            var identity = new ClaimsIdentity(claims, "Bearer");
             var claimsPrincipal = new ClaimsPrincipal(identity);
 
             var _userRepository = Mock.Of<IDataRepository<User>>();
