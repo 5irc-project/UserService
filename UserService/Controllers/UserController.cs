@@ -135,7 +135,8 @@ namespace UserService.Controllers
             {
                 var user = await dataRepository.GetByStringAsync(userDto.Email);
                 //return UserMapper.ModelToDto(user.Value);
-                return mapper.Map<UserDTO>(user.Value);
+                UserDTO test = mapper.Map<UserDTO>(user.Value);
+                return test;
             }
             catch (UserNotFoundException)
             {
