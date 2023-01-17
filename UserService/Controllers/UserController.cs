@@ -41,7 +41,7 @@ namespace UserService.Controllers
         /// <response code="200">Successfully return the user</response>
         /// <response code="404">User not found</response>
         // GET: api/users/5
-        [Route("[action]/{id}")]
+        [Route("{id}")]
         [HttpGet]
         [ProducesResponseType(typeof(User), 200)]
         [ProducesResponseType(404)]
