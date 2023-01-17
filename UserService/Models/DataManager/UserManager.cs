@@ -33,7 +33,7 @@ namespace UserService.Models.DataManager
 
         public async Task<ActionResult<User>> GetByStringAsync(string email)
         {
-            var user = await userDBContext.Users.FirstAsync(u => u.Email.ToUpper() == email.ToUpper());
+            var user = await userDBContext.Users.FirstOrDefaultAsync(u => u.Email.ToUpper() == email.ToUpper());
             if (user == null)
             {
                 throw new UserNotFoundException();

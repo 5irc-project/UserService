@@ -41,7 +41,7 @@ namespace UserService.Controllers
             try
             {
                 await dataRepository.AddAsync(user);
-                return CreatedAtAction("GetUserById", new { id = user.UserId }, user);
+                return CreatedAtAction("get", new { id = user.UserId }, user);
             }
             catch (UserDBCreationException e)
             {
@@ -136,7 +136,7 @@ namespace UserService.Controllers
             {
                 User user = UserMapper.DtoToModel(userDto);
                 await dataRepository.AddAsync(user);
-                return CreatedAtAction("GetUserById", new { id = user.UserId }, user);
+                return CreatedAtAction("get", new { id = user.UserId }, user);
             }
         }
 
