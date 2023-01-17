@@ -27,7 +27,16 @@ builder.Services
                 x.SaveToken = true;
                 x.TokenValidationParameters = JwtTokenValidator.CreateTokenValidationParameters();
             });
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("_myAllowSpecificOrigins",
+        policy =>
+        {
+            policy.WithOrigins("*")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+        });
+});
 builder.Services.AddDbContext<UserDBContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("UserDBConnectionString")));
 
 builder.Services.AddScoped<IDataRepository<User>, UserManager>();
@@ -61,6 +70,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 // }
 
+app.UseCors("_myAllowSpecificOrigins");
 app.UseHttpsRedirection();
 
 app.UseAuthentication();

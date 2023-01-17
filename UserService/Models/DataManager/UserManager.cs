@@ -58,7 +58,6 @@ namespace UserService.Models.DataManager
             try
             {
                 userDBContext.Entry(user).State = EntityState.Modified;
-                user.UserId = entity.UserId;
                 user.Nom = entity.Nom;
                 user.ProfilePictureUrl = entity.ProfilePictureUrl;
                 user.Email = entity.Email;
