@@ -1,31 +1,28 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using UserService.Controllers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UserService.Models;
 using UserService.Models.Repository;
 using UserService.Models.EntityFramework;
-using Microsoft.EntityFrameworkCore;
-using UserService.Models.DataManager;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.RegularExpressions;
 using System.Net;
 using Moq;
 using UserService.Exceptions;
-using Microsoft.AspNetCore.Http;
 using UserService.DTO;
-using UserService.Mappers;
 using System.Security.Claims;
+using AutoMapper;
+using UserService.Mappers;
+using UserService.Helpers;
+using System.Dynamic;
+using Microsoft.AspNetCore.Http;
 
 namespace UserService.Controllers.Tests
 {
     [TestClass()]
     public class UserControllerTests
     {
-        public UserControllerTests() {}
+        public IMapper mapper;
+        public UserControllerTests()
+        {
+            this.mapper = GetAutomapper();
+        }
 
         //[TestMethod]
         //public void GetAllUsers_ReturnsOk()
@@ -98,32 +95,32 @@ namespace UserService.Controllers.Tests
         // Can't test model not ok as it's managed by annotations: not our code therefore not our responsibility
 
         [TestMethod()]
-        public void GetUserByEmailTest_ReturnsOk()
+        public void CreateOrGetUserTest_ReturnsOk()
         {
             var _userRepository = Mock.Of<IDataRepository<User>>();
 
             var demoUser = GetDemoUser();
-            var demoUserDTO = UserMapper.ModelToDto(demoUser);
+            var demoUserDTO = this.mapper.Map<UserDTO>(demoUser);
 
-            Mock.Get(_userRepository).Setup(m => m.GetByStringAsync("demo_email@gmail.com")).ReturnsAsync(demoUser);
+            Mock.Get(_userRepository).Setup(m => m.GetByStringAsync(demoUser.Email)).ReturnsAsync(demoUser);
 
-            var controller = new UserController(_userRepository);
+            var controller = new UserController(_userRepository, this.mapper);
 
             var result = controller.CreateOrGetUser(demoUserDTO);
             Assert.AreEqual(result.Result.Value, demoUserDTO);
         }
 
         [TestMethod()]
-        public void GetUserByEmailTest_ReturnsNotOk()
+        public void CreateOrGetUserTest_ReturnsNotOk()
         {
             var _userRepository = Mock.Of<IDataRepository<User>>();
 
             var demoUser = GetDemoUser();
-            var demoUserDTO = UserMapper.ModelToDto(demoUser);
+            var demoUserDTO = this.mapper.Map<UserDTO>(demoUser);
 
-            Mock.Get(_userRepository).Setup(m => m.GetByStringAsync("demo_email@gmail.com")).ThrowsAsync(new UserNotFoundException());
+            Mock.Get(_userRepository).Setup(m => m.GetByStringAsync(demoUser.Email)).ThrowsAsync(new UserNotFoundException());
 
-            var controller = new UserController(_userRepository);
+            var controller = new UserController(_userRepository, this.mapper);
 
             var result = controller.CreateOrGetUser(demoUserDTO);
             Assert.IsInstanceOfType(result.Result.Result, typeof(CreatedAtActionResult));
@@ -132,62 +129,66 @@ namespace UserService.Controllers.Tests
         [TestMethod()]
         public void PutUser_ReturnsOk()
         {
-            var claims = new List<Claim>()
-            {
-                new Claim("UserId", "3")
-            };
-
-            var identity = new ClaimsIdentity(claims, "Bearer");
-            var claimsPrincipal = new ClaimsPrincipal(identity);
-
+            var user = GetDemoUser();
             var _userRepository = Mock.Of<IDataRepository<User>>();
-            var controller = new UserController(_userRepository);
+            var controller = new UserController(_userRepository, this.mapper);
+            MockControllerContext(controller);
+            
 
             var demoUser = GetDemoUser();
-            var demoUserDTO = UserMapper.ModelToDto(demoUser);
+            var demoUserDTO = this.mapper.Map<UserDTO>(demoUser);
 
-            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(3)).ReturnsAsync(demoUser);
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(user.UserId)).ReturnsAsync(demoUser);
 
-            var actionResult = controller.PutUser(demoUserDTO).Result;
+            var actionResult = controller.PutUser(demoUserDTO).Result.Result;
             Assert.IsInstanceOfType(actionResult, typeof(NoContentResult));
         }
 
         [TestMethod()]
-        public void PutUser_ReturnsBadRequest()
+        public void PutUser_ReturnsError500()
         {
+            var user = GetDemoUser();
             var _userRepository = Mock.Of<IDataRepository<User>>();
-            var controller = new UserController(_userRepository);
+            var controller = new UserController(_userRepository, this.mapper);
+            MockControllerContext(controller);
             var demoUser = GetDemoUser();
-            var demoUserDTO = UserMapper.ModelToDto(demoUser);
-            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(3)).ReturnsAsync(demoUser);
-            Mock.Get(_userRepository).Setup(m => m.UpdateAsync(demoUser, demoUser)).ThrowsAsync(new UserDBUpdateException());
+            var demoUserDTO = this.mapper.Map<UserDTO>(demoUser);
 
-            var actionResult = (ObjectResult)controller.PutUser(demoUserDTO).Result;
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(user.UserId)).ReturnsAsync(demoUser);
+            Mock.Get(_userRepository).Setup(m => m.UpdateAsync(It.IsAny<User>(), It.IsAny<User>())).ThrowsAsync(new UserDBUpdateException());
+
+            var actionResult = (ObjectResult) controller.PutUser(demoUserDTO).Result.Result;
             //Assert.AreEqual(actionResult.StatusCode, (int)HttpStatusCode.BadR);
-            Assert.IsInstanceOfType(actionResult, typeof(BadRequestObjectResult));
+            Assert.AreEqual(actionResult.StatusCode, (int)HttpStatusCode.InternalServerError);
         }
 
         [TestMethod()]
         public void PutUser_ReturnsNotFound()
         {
+            var user = GetDemoUser();
             var _userRepository = Mock.Of<IDataRepository<User>>();
-            var controller = new UserController(_userRepository);
+            var controller = new UserController(_userRepository, this.mapper);
+            MockControllerContext(controller);
             var demoUser = GetDemoUser();
-            var demoUserDTO = UserMapper.ModelToDto(demoUser);
-            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(3)).ThrowsAsync(new UserNotFoundException());
+            var demoUserDTO = this.mapper.Map<UserDTO>(demoUser);
 
-            var actionResult = (ObjectResult)controller.PutUser(demoUserDTO).Result;
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(user.UserId)).ThrowsAsync(new UserNotFoundException());
+
+            var actionResult = controller.PutUser(demoUserDTO).Result.Result;
             Assert.IsInstanceOfType(actionResult, typeof(NotFoundObjectResult));
         }
 
         [TestMethod()]
         public void DeleteUser_ReturnsOk()
         {
+            var user = GetDemoUser();
             var _userRepository = Mock.Of<IDataRepository<User>>();
-            var controller = new UserController(_userRepository);
+            var controller = new UserController(_userRepository, this.mapper);
+            MockControllerContext(controller);
             var demoUser = GetDemoUser();
-            var demoUserDTO = UserMapper.ModelToDto(demoUser);
-            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(1)).ReturnsAsync(demoUser);
+            var demoUserDTO = this.mapper.Map<UserDTO>(demoUser);
+
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(user.UserId)).ReturnsAsync(demoUser);
             //Mock.Get(_userRepository).Setup(m => m.DeleteAsync(demoUser));
 
             var actionResult = controller.DeleteUser().Result.Result;
@@ -197,9 +198,11 @@ namespace UserService.Controllers.Tests
         [TestMethod()]
         public void DeleteUser_ReturnsNotFound()
         {
+            var user = GetDemoUser();
             var _userRepository = Mock.Of<IDataRepository<User>>();
-            var controller = new UserController(_userRepository);
-            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(1)).ThrowsAsync(new UserNotFoundException());
+            var controller = new UserController(_userRepository, this.mapper);
+            MockControllerContext(controller);
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(user.UserId)).ThrowsAsync(new UserNotFoundException());
             //Mock.Get(_userRepository).Setup(m => m.DeleteAsync(demoUser));
 
             var actionResult = controller.DeleteUser().Result.Result;
@@ -209,10 +212,12 @@ namespace UserService.Controllers.Tests
         [TestMethod()]
         public void DeleteUser_ReturnsNotOk()
         {
+            var user = GetDemoUser();
             var _userRepository = Mock.Of<IDataRepository<User>>();
-            var controller = new UserController(_userRepository);
+            var controller = new UserController(_userRepository, this.mapper);
+            MockControllerContext(controller);
             var demoUser = GetDemoUser();
-            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(1)).ReturnsAsync(demoUser);
+            Mock.Get(_userRepository).Setup(m => m.GetByIdAsync(user.UserId)).ReturnsAsync(demoUser);
             Mock.Get(_userRepository).Setup(m => m.DeleteAsync(demoUser)).ThrowsAsync(new UserDBDeletionException());
 
             var actionResult = (ObjectResult) controller.DeleteUser().Result.Result;
@@ -227,6 +232,38 @@ namespace UserService.Controllers.Tests
         UserDTO GetSecondDemoUser()
         {
             return new UserDTO() { UserId = 5, Nom = "Second Demo name", Email = "second_demo_email@gmail.com", ProfilePictureUrl = "second_demo_picture.png" };
+        }
+
+        private ClaimsPrincipal MockUserWithClaims()
+        {
+            var user = GetDemoUser();
+            var claims = new List<Claim>()
+            {
+                new Claim("UserId", user.UserId.ToString()),
+                new Claim("displayName", user.Nom),
+            };
+            var identity = new ClaimsIdentity(claims, "Bearer");
+            return new ClaimsPrincipal(identity);
+        }
+
+        private void MockControllerContext(UserController controller)
+        {
+            var user = MockUserWithClaims();
+            controller.ControllerContext = new ControllerContext();
+            controller.ControllerContext.HttpContext = new DefaultHttpContext() { User = user };
+        }
+
+        private IMapper GetAutomapper()
+        {
+            MapperConfiguration mapperConfig = new MapperConfiguration(
+                cfg =>
+                {
+                    cfg.AddProfile(new AutoMapperProfiles());
+                });
+
+            IMapper mapper = new Mapper(mapperConfig);
+
+            return mapper;
         }
     }
 }

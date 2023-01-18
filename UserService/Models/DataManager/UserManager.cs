@@ -53,7 +53,7 @@ namespace UserService.Models.DataManager
 
         }
 
-        public async Task UpdateAsync(User user, User entity)
+        public async Task<ActionResult<User>> UpdateAsync(User user, User entity)
         {
             try
             {
@@ -62,6 +62,7 @@ namespace UserService.Models.DataManager
                 user.ProfilePictureUrl = entity.ProfilePictureUrl;
                 user.Email = entity.Email;
                 await userDBContext.SaveChangesAsync();
+                return entity;
             }
             catch (Exception)
             {

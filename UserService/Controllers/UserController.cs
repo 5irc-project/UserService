@@ -1,10 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security;
 using UserService.DTO;
 using UserService.Exceptions;
-using UserService.Mappers;
 using UserService.Models.EntityFramework;
 using UserService.Models.Repository;
 
@@ -16,11 +14,13 @@ namespace UserService.Controllers
     public class UserController : ControllerBase
     {
 
-        private readonly IDataRepository<User> dataRepository; 
+        private readonly IDataRepository<User> dataRepository;
+        private readonly IMapper mapper;
 
-        public UserController(IDataRepository<User> dataRepository)
+        public UserController(IDataRepository<User> dataRepository, IMapper mapper)
         {
             this.dataRepository = dataRepository;
+            this.mapper = mapper;
         }
 
         /// <summary>
@@ -106,7 +106,8 @@ namespace UserService.Controllers
             try
             {
                 var user = await dataRepository.GetByIdAsync(id);
-                return UserMapper.ModelToDto(user.Value);
+                return mapper.Map<UserDTO>(user.Value);
+                //return UserMapper.ModelToDto(user.Value);
             }
             catch (UserNotFoundException)
             {
@@ -130,11 +131,14 @@ namespace UserService.Controllers
             try
             {
                 var user = await dataRepository.GetByStringAsync(userDto.Email);
-                return UserMapper.ModelToDto(user.Value);
+                //return UserMapper.ModelToDto(user.Value);
+                UserDTO test = mapper.Map<UserDTO>(user.Value);
+                return test;
             }
             catch (UserNotFoundException)
             {
-                User user = UserMapper.DtoToModel(userDto);
+                //User user = UserMapper.DtoToModel(userDto);
+                User user = mapper.Map<User>(userDto);
                 await dataRepository.AddAsync(user);
                 return CreatedAtAction("get", new { id = user.UserId }, user);
             }
@@ -154,13 +158,16 @@ namespace UserService.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [Authorize]
-        public async Task<IActionResult> PutUser(UserDTO modifiedUser)
+        public async Task<ActionResult<User>> PutUser(UserDTO modifiedUser)
         {
             var id = GetUserIdFromClaims();
             try
             {
                 var user = await dataRepository.GetByIdAsync(id);
-                await dataRepository.UpdateAsync(user.Value, UserMapper.DtoToModel(modifiedUser));
+                //await dataRepository.UpdateAsync(user.Value, UserMapper.DtoToModel(modifiedUser));
+                
+                var mUser = await dataRepository.UpdateAsync(user.Value, mapper.Map<User>(modifiedUser));
+                
                 return NoContent();
             }
             catch (UserNotFoundException)
@@ -169,7 +176,7 @@ namespace UserService.Controllers
             }
             catch (UserDBUpdateException)
             {
-                return BadRequest("Could not update database");
+                return StatusCode(500, "Could not update database");
             }
         }
 
