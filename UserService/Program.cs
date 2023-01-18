@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using UserService.Helpers;
+using UserService.HttpClient;
 using UserService.Models;
 using UserService.Models.DataManager;
 using UserService.Models.EntityFramework;
@@ -15,6 +16,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(AutoMapperProfiles).Assembly);
+builder.Services.AddHttpClient();
 
 builder.Services
             .AddAuthentication(x =>
@@ -39,8 +41,9 @@ builder.Services.AddCors(options =>
         });
 });
 builder.Services.AddDbContext<UserDBContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("UserDBConnectionString")));
-
 builder.Services.AddScoped<IDataRepository<User>, UserManager>();
+
+builder.Services.AddScoped<IMusicHttpClient, MusicHttpClient>();
 
 static WebApplication MigrateDatabase(WebApplication app)
 {

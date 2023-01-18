@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UserService.DTO;
 using UserService.Exceptions;
+using UserService.HttpClient;
 using UserService.Models.EntityFramework;
 using UserService.Models.Repository;
 
@@ -16,11 +17,16 @@ namespace UserService.Controllers
 
         private readonly IDataRepository<User> dataRepository;
         private readonly IMapper mapper;
+        private readonly IMusicHttpClient musicHttpClient;
 
-        public UserController(IDataRepository<User> dataRepository, IMapper mapper)
+        public UserController(
+            IDataRepository<User> dataRepository,
+            IMapper mapper,
+            IMusicHttpClient musicHttpClient)
         {
             this.dataRepository = dataRepository;
             this.mapper = mapper;
+            this.musicHttpClient = musicHttpClient;
         }
 
         /// <summary>
@@ -121,7 +127,7 @@ namespace UserService.Controllers
         /// <returns>The related user</returns>
         /// <response code="200">Successfully return the user</response>
         /// <response code="201">Successfully create and return the user</response>
-        // GET: api/User/CreateOrGetUser/toto@toto.fr
+        // POST: api/User/CreateOrGetUser
         [ActionName("CreateOrGetUser")]
         [HttpPost]
         [ProducesResponseType(typeof(User), 200)]
@@ -132,15 +138,24 @@ namespace UserService.Controllers
             {
                 var user = await dataRepository.GetByStringAsync(userDto.Email);
                 //return UserMapper.ModelToDto(user.Value);
-                UserDTO test = mapper.Map<UserDTO>(user.Value);
-                return test;
+                return Ok(mapper.Map<UserDTO>(user.Value));
             }
             catch (UserNotFoundException)
             {
                 //User user = UserMapper.DtoToModel(userDto);
                 User user = mapper.Map<User>(userDto);
-                await dataRepository.AddAsync(user);
-                return CreatedAtAction("get", new { id = user.UserId }, user);
+                try
+                {
+                    await dataRepository.AddAsync(user);
+                    await musicHttpClient.AddFavoritePlaylist(user.UserId);
+                    return CreatedAtAction("get", new { id = user.UserId }, user);
+                } catch (UserDBCreationException)
+                {
+                    return StatusCode(500, "Failed to add the user: is the e-mail unique?");
+                } catch (FailedHttpRequestException)
+                {
+                    return StatusCode(500, "Failed to generate the user's \"favorites\" playlist");
+                }
             }
         }
 
@@ -165,7 +180,6 @@ namespace UserService.Controllers
             {
                 var user = await dataRepository.GetByIdAsync(id);
                 //await dataRepository.UpdateAsync(user.Value, UserMapper.DtoToModel(modifiedUser));
-                
                 var mUser = await dataRepository.UpdateAsync(user.Value, mapper.Map<User>(modifiedUser));
                 
                 return NoContent();
