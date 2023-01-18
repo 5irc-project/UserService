@@ -11,11 +11,11 @@ namespace UserService.HttpClient
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly string BASE_PATH = "";
-        private readonly string ADD_FAVORITE_PLAYLIST = "private/";
+        private readonly string ADD_FAVORITE_PLAYLIST = "private/Music/Playlist/";
 
         public MusicHttpClient(IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
-            BASE_PATH = configuration["Urls:MusicPlaylistService"];
+            BASE_PATH = configuration["Urls:MusicMicroService"];
             _httpClientFactory = httpClientFactory;
         }
 
