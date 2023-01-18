@@ -1,11 +1,8 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security;
 using UserService.DTO;
 using UserService.Exceptions;
-using UserService.Mappers;
 using UserService.Models.EntityFramework;
 using UserService.Models.Repository;
 
@@ -161,14 +158,16 @@ namespace UserService.Controllers
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
         [Authorize]
-        public async Task<IActionResult> PutUser(UserDTO modifiedUser)
+        public async Task<ActionResult<User>> PutUser(UserDTO modifiedUser)
         {
             var id = GetUserIdFromClaims();
             try
             {
                 var user = await dataRepository.GetByIdAsync(id);
                 //await dataRepository.UpdateAsync(user.Value, UserMapper.DtoToModel(modifiedUser));
-                await dataRepository.UpdateAsync(user.Value, mapper.Map<User>(modifiedUser));
+                
+                var mUser = await dataRepository.UpdateAsync(user.Value, mapper.Map<User>(modifiedUser));
+                
                 return NoContent();
             }
             catch (UserNotFoundException)
@@ -177,7 +176,7 @@ namespace UserService.Controllers
             }
             catch (UserDBUpdateException)
             {
-                return BadRequest("Could not update database");
+                return StatusCode(500, "Could not update database");
             }
         }
 
